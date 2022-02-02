@@ -6,7 +6,7 @@ _Deep Reinforcement Learning for Active Wake Control_.
 
 ## How to replicate the experiments
 
-Because each experiment has many parameters, we use configuration files to  describe each experiment. The configuration files for the experiments presented in the paper can be found in `.code/configs`: `action_representations_*.yml` for the action representation experiment (Section 4.1), and `noisy_*.yml` for the noisy observation experiment (Section 4.2). You can also create new configuration files to run your own experiments.
+Because each experiment has many parameters, we use configuration files to  describe each experiment. The configuration files for the experiments presented in the paper can be found in `./code/configs`: `action_representations_*.yml` for the action representation experiment (Section 4.1), and `noisy_*.yml` for the noisy observation experiment (Section 4.2). You can also create new configuration files to run your own experiments.
 
 To replicate the experiments in the paper, run `python3 code/main.py --config CONFIG_FILE`, where `CONFIG_FILE` is a path to a configuration file.
 The output data is written to a directory specified in the configuration, in Tensorboard format. You can use `./code/tensorboard_to_csv.py --path PATH` to convert the output from `PATH` to a `.csv`-file.
