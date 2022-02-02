@@ -555,7 +555,7 @@ class WindFarmEnv(Env):
             self.visualization.close()
         self.wind_process.close()
 
-    def get_log_dict(self) -> Dict[str: Union[float, int, str, bool]]:
+    def get_log_dict(self) -> Dict[str, Union[float, int, str, bool]]:
         """
         Generates a dictionary of data that can be used for logging purposes.
         """
