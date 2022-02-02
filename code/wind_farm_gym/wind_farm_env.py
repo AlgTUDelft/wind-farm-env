@@ -162,7 +162,7 @@ class WindFarmEnv(Env):
         self.wind_process = wind_process
 
         # initialize the action space to a normalized interval [-1; 1] for each turbine
-        ones = np.array([1.0 for _ in range(self.n_turbines)])
+        ones = np.array([1.0 for _ in range(self.n_turbines)], dtype=np.float32)
         self.action_space = Box(-ones, ones, dtype=np.float32)
         self.action_space.seed(self._seed)
         self.action_representation = action_representation
@@ -253,18 +253,18 @@ class WindFarmEnv(Env):
         self._has_states = len(self.observed_variables) > 0
 
         if self._has_states:
-            self.low = np.array([d['min'] for d in self.observed_variables])
-            self.high = np.array([d['max'] for d in self.observed_variables])
+            self.low = np.array([d['min'] for d in self.observed_variables], dtype=np.float32)
+            self.high = np.array([d['max'] for d in self.observed_variables], dtype=np.float32)
 
             self._normalize_observations = normalize_observations
             if self._normalize_observations:
 
                 self.state_delta = self.high - self.low
-                self.observation_space = Box(np.zeros_like(self.low),
-                                             np.ones_like(self.high),
+                self.observation_space = Box(np.zeros_like(self.low, dtype=np.float32),
+                                             np.ones_like(self.high, dtype=np.float32),
                                              dtype=np.float32)
             else:
-                self.observation_space = Box(self.low, self.high, dtype=np.float64)
+                self.observation_space = Box(self.low, self.high, dtype=np.float32)
 
             self._perturbed_observations = None
             if perturbed_observations is not None:

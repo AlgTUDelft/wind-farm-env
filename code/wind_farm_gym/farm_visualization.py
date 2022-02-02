@@ -82,6 +82,8 @@ class FarmVisualization:
         if self.wind_map is None:
             self.wind_map = WindMap((self.plot_width, self.plot_height), self.dpi, cut_plane, turbines_raw_data,
                                     self.color_map)
+            self.wind_map.scale_x = self.viewer_width / self.wind_map.width
+            self.wind_map.scale_y = self.viewer_height / self.wind_map.height
             self.viewer.add_geom(self.wind_map)
         else:
             self.wind_map.update_image(cut_plane, turbines_raw_data)

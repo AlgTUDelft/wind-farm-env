@@ -63,7 +63,7 @@ class WindMap(Sprite):
         self.draw()
 
     def clear(self):
-        self.ax.collections = []
+        self.ax.collections.clear()
 
     def close(self):
         plt.close(self.fig)
