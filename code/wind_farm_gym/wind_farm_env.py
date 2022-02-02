@@ -1,7 +1,8 @@
 from typing import Tuple, List, Literal, Union, Optional, Dict
 
+import floris.simulation
 from floris.tools.floris_interface import FlorisInterface
-from floris.simulation import Farm, Turbine
+from floris.simulation import Farm
 
 from gym import Env
 from gym.utils import seeding
@@ -13,6 +14,8 @@ import os
 from .farm_visualization import FarmVisualization
 from .wind_process import WindProcess, NoiseProcess
 
+# When normalizing the state vector to [0, 1], we need to know the boundaries for the atmospheric conditions.
+# If no such boundaries are supplied, these defaults will be used.
 DEFAULT_BOUNDARIES = {
     "wind_speed": (0.0, 20.0),
     "wind_direction": (0.0, 360.0),
@@ -24,7 +27,11 @@ DEFAULT_BOUNDARIES = {
 
 
 class WindFarmEnv(Env):
-
+    """
+    WindFarmEnv is an OpenAI gym environment that simulates a wind farm as a reinforcement learning problem
+    with dynamic atmospheric conditions. It uses FLORIS to simulate the farm at each time step, and a custom
+    (stochastic) process for the wind data for transitions between time steps.
+    """
     metadata = {
         'render.modes': ['human', 'rgb_array'],
         'video.frames_per_second': 50
@@ -35,7 +42,7 @@ class WindFarmEnv(Env):
             seed: Optional[int] = None,
             floris: Optional[Union[FlorisInterface, str]] = None,
             turbine_layout: Optional[Union[Dict[str, List[float]], Tuple[List[float], List[float]]]] = None,
-            mast_layout: Optional[Tuple[List[float], List[float]]] = None,
+            mast_layout: Optional[Union[Dict[str, List[float]], Tuple[List[float], List[float]]]] = None,
             time_delta: float = 1.0,
             max_angular_velocity: float = 1.0,
             desired_yaw_boundaries: Tuple[float, float] = (-45.0, 45.0),
@@ -53,6 +60,56 @@ class WindFarmEnv(Env):
             perturbed_observations: Optional[Union[str, int, Tuple[int, ...]]] = None,
             perturbation_scale: float = 0.05
     ):
+        """
+        Initialize an instance of WindFarmEnv.
+
+        :param seed: random seed
+        :param floris: either FlorisInterface or a path to an input .json file to initialize FLORIS; if None,
+        default_floris_input.json will be used
+        :param turbine_layout: positions (in meters) of the turbines in the wind farm; either a dictionary
+        {'x': [x_0, x_1, ...], 'y': [y_o, y_1, ...]}, or a tuple of two lists ([x_0, x_1, ...], [y_o, y_1, ...]);
+        if None, the positions will be taken from FlorisInterface
+        :param mast_layout: positions of the met masts; same format as @turbine_layout; if None, no met masts are
+        created
+        :param time_delta: time interval between two consecutive time steps, in seconds
+        :param max_angular_velocity: maximum angular velocity of the turbines, degrees/sec; determines how much can the
+        yaws change between two consecutive time steps
+        :param desired_yaw_boundaries: minimum gamma_min and maximum yawing to the wind that the turbines will  try to
+        maintain; if the current wind direction is gamma, the turbine will not turn to angles outside of
+        [gamma - gamma_min, gamma + gamma_max]; if a yaw is already outside of these limits, the turbine will
+        turn to the closest point within the interval it can reach, given its angular velocity
+        :param wind_process: a (stochastic) wind process that governs the transitions between time steps; if None
+        static wind is used, based on data in the FlorisInterface
+        :param observe_yaws: are the yaws included in the observation vector?
+        :param farm_observations: atmospheric conditions observed on the farm-level; these are not measured by met masts
+        or turbines, but come from an external source and are always the same across the wind farm; any atmospheric
+        conditions supported by FLORIS can be used; for FLORIS 2.4, these are "wind_speed", "wind_direction",
+        "wind_veer", "wind_shear", "turbulence_intensity", and "air_density"; these atmospheric conditions are included
+        in the observation vector
+        :param mast_observations: atmospheric conditions measured by met masts, see @farm_observations for the list of
+        possible values; these atmospheric conditions are included in the observation vector separately for each mast
+        :param lidar_observations: atmospheric conditions measured at turbine locations by nacelle-mounted lidars, see
+        @farm_observations for the list of possible values; these atmospheric conditions are included in the observation
+        vector separately for each turbine from the @lidar_turbines list
+        :param lidar_turbines: turbines that collect atmospheric measurements; either 'all', or a list of turbine
+        indices corresponding to @turbine_layout
+        :param lidar_range: turbine measurements are collected at a point located this far in front of the turbine rotor
+        for a negative value, measurements are collected behind the rotor area, and thus are affected by the turbine's
+        wake
+        :param observation_boundaries: for normalizing the observations, minimum and maximum values are required; if
+        None, the defaults will be used
+        :param normalize_observations: should the observations be normalized?
+        :param random_reset: if True, when the environment is reset the yaws will be set to random values given by
+        @desired_yaw_boundaries; otherwise, the turbines will face the wind upon reset (or the smallest possible yaw,
+        if @desired_yaw_boundaries do not allow facing the wind)
+        :param action_representation: the way that the actions are encoded into [0, 1]; Either 'yaw', 'absolute', or
+        'wind', see Section 3.2 in the paper for details
+        :param perturbed_observations: a list of atmospheric conditions with perturbed observations; white noise
+        is injected into these measurements
+        :param perturbation_scale: perturbation noise scale, relative to the observation scale. If the observation is
+        normalized, than zero-mean Gaussian variables with standard deviation of @perturbation_scale are added to
+        each of the perturbed observations; for non-normalized observations, this noise is appropriately rescaled
+        """
         # random seeding
         self._np_random, self._seed = self.seed(seed)
         self.random_reset = random_reset
@@ -106,7 +163,8 @@ class WindFarmEnv(Env):
 
         # initialize the action space to a normalized interval [-1; 1] for each turbine
         ones = np.array([1.0 for _ in range(self.n_turbines)])
-        self.action_space = Box(-ones, ones, dtype=np.float32, seed=self._seed)
+        self.action_space = Box(-ones, ones, dtype=np.float32)
+        self.action_space.seed(self._seed)
         self.action_representation = action_representation
         if self.action_representation == 'absolute':
             self._primal_wind_direction = self._farm.wind_direction[0]
@@ -115,23 +173,25 @@ class WindFarmEnv(Env):
         self._current_flow = None
 
         # initialize the observation space
+        self.observed_variables = []
         if observe_yaws:
-            self.observed_variables = [
-                {
-                    'name': f'turbine_{n}_yaw',
-                    'min': -180.0,
-                    'max': 180.0,
-                    'type': 'yaw',
-                    'index': n
-                }
-                for n in range(self.n_turbines)
-            ]
-        else:
-            self.observed_variables = []
+            self.observed_variables.extend(
+                [
+                    {
+                        'name': f'turbine_{n}_yaw',
+                        'min': -180.0,
+                        'max': 180.0,
+                        'type': 'yaw',
+                        'index': n
+                    }
+                    for n in range(self.n_turbines)
+                ]
+            )
 
         if observation_boundaries is None:
             observation_boundaries = {}
 
+        # build a list of farm-wide observations
         if isinstance(farm_observations, str):
             farm_observations = (farm_observations, )
         if farm_observations is not None and len(farm_observations) > 0:
@@ -147,6 +207,7 @@ class WindFarmEnv(Env):
                 ]
             )
 
+        # build a list of per-mast observations
         if isinstance(mast_observations, str):
             mast_observations = (mast_observations, )
         if mast_observations is not None and len(mast_observations) > 0:
@@ -163,6 +224,7 @@ class WindFarmEnv(Env):
                 ]
             )
 
+        # build a list of per-turbine observations
         self._lidar_turbines = []
         if isinstance(lidar_observations, str):
             lidar_observations = (lidar_observations, )
@@ -187,6 +249,7 @@ class WindFarmEnv(Env):
                 )
                 self._lidar_turbines = list(lidar_turbines)
 
+        # if nothing is observed, the problem has no states; in MDPs this is modeled as a single-state problem
         self._has_states = len(self.observed_variables) > 0
 
         if self._has_states:
@@ -199,10 +262,9 @@ class WindFarmEnv(Env):
                 self.state_delta = self.high - self.low
                 self.observation_space = Box(np.zeros_like(self.low),
                                              np.ones_like(self.high),
-                                             dtype=np.float32,
-                                             seed=self._seed)
+                                             dtype=np.float32)
             else:
-                self.observation_space = Box(self.low, self.high, dtype=np.float64, seed=self._seed)
+                self.observation_space = Box(self.low, self.high, dtype=np.float64)
 
             self._perturbed_observations = None
             if perturbed_observations is not None:
@@ -213,9 +275,9 @@ class WindFarmEnv(Env):
                 self._perturbed_observations = list(perturbed_observations)
                 self._perturbation_scale = [(x['max'] - x['min']) * perturbation_scale for x in self.observed_variables]
                 self._noise = NoiseProcess(len(self._perturbed_observations))
-
         else:
-            self.observation_space = Discrete(1, seed=self._seed)
+            self.observation_space = Discrete(1)  # single-state problem
+        self.observation_space.seed(self._seed)
 
         # initialize the reward range
         min_reward = 0.0
@@ -233,12 +295,16 @@ class WindFarmEnv(Env):
             else:
                 best_angle, worst_angle = self.desired_min_yaw, self.desired_max_yaw
 
+        # To compute the reward range, we check the power curve for the best and worst power output.
+        # To do so, we first need to know the maximum and minimum wind speed for which the power curve is defined in
+        # FlorisInterface
         if wind_process is None:
             max_speed = np.max(self.floris_interface.floris.farm.wind_speed)
             min_speed = np.min(self.floris_interface.floris.farm.wind_speed)
         else:
             min_speed, max_speed = observation_boundaries.get('wind_speed', DEFAULT_BOUNDARIES.get('wind_speed'))
 
+        # In theory, the turbines may not be identical, so we cannot just multiply by the number of turbines
         for turbine in self.turbines:
             # remember the original values
             yaw = turbine.yaw_angle
@@ -262,39 +328,60 @@ class WindFarmEnv(Env):
             # return the values to the original ones
             turbine.yaw_angle = yaw
             turbine.velocities = velocities
+
         self._reward_scaling_factor = 1.0e-6 * self.time_delta / 3600  # from power to energy, convert to MWh
         self.reward_range = (min_reward * self._reward_scaling_factor, max_reward * self._reward_scaling_factor)
 
         self.visualization = None
         self.state = self._get_state()
 
-
     @property
-    def turbines(self):
+    def turbines(self) -> List[floris.simulation.Turbine]:
+        """
+        All turbines in the farm
+        """
         return self._farm.turbines
 
     @property
-    def n_turbines(self):
+    def n_turbines(self) -> int:
+        """
+        Number of turbines in the farm
+        """
         return len(self.turbines)
 
     @property
-    def n_masts(self):
+    def n_masts(self) -> int:
+        """
+        Number of meteorological masts in the farm
+        """
         return 0 if len(self.mast_layout) == 0 else len(self.mast_layout[0])
 
     @property
-    def yaws_from_wind(self):
+    def yaws_from_wind(self) -> List[float]:
+        """
+        Turbine yaws relative to the wind
+        """
         return [turbine.yaw_angle for turbine in self.turbines]
 
     @property
-    def wind_directions_at_turbines(self):
+    def wind_directions_at_turbines(self) -> List[float]:
+        """
+        Wind directions at turbine locations
+        """
         return self._farm.wind_direction
 
     @property
-    def yaws_from_north(self):
+    def yaws_from_north(self) -> List[float]:
+        """
+        Turbine yaws from the north
+        """
         return [x - y for x, y in zip(self.wind_directions_at_turbines, self.yaws_from_wind)]
 
     @property
-    def hub_height(self):
+    def hub_height(self) -> float:
+        """
+        Hub height of the turbines; currently assumed to be the same
+        """
         return self.turbines[0].hub_height
 
     def _get_measurement_point_data(self, d):
@@ -409,6 +496,9 @@ class WindFarmEnv(Env):
         return self.state, reward, done, {}
 
     def _adjust_yaws(self, action, new_wind_direction, old_wind_direction):
+        """
+        Changes the turbine yaws given an action vector.
+        """
         action = np.array(action)
         wind_direction_change = (new_wind_direction - old_wind_direction + 180) % 360 - 180
         # get how far the turbine is allowed to turn in each direction in one time step
@@ -417,21 +507,24 @@ class WindFarmEnv(Env):
         # sometimes a turbine is too far out of the desired yawing zone. In this case it should
         # move towards the wind direction. This ensures that by setting equal lower and upper bounds
         # for the next step yaw range
-        y_max, y_min = [y if x < y and x == self.desired_max_yaw else x for x, y in zip(y_max, y_min)],\
-                       [x if x < y and y == self.desired_min_yaw else y for x, y in zip(y_max, y_min)]
-        if self.action_representation == 'yaw':
+        y_max, y_min = [y if y > x == self.desired_max_yaw else x for x, y in zip(y_max, y_min)],\
+                       [x if x < y == self.desired_min_yaw else y for x, y in zip(y_max, y_min)]
+        # depending on the representation, compute new yaws from the action
+        if self.action_representation == 'yaw':          # see Section 3.2.1 in the paper
             new_yaws = ((self.yaws_from_wind + action * self.max_delta_yaw) + 180) % 360 - 180
-        elif self.action_representation == 'wind':
+        elif self.action_representation == 'wind':       # see Section 3.2.3 in the paper
             new_yaws = (action + 1.0) / 2.0 * (self.desired_max_yaw - self.desired_min_yaw) + self.desired_min_yaw
-        elif self.action_representation == 'absolute':
+        elif self.action_representation == 'absolute':   # see Section 3.2.2 in the paper
             absolute_yaws = self._primal_wind_direction - action * 180.0
             new_yaws = (old_wind_direction - absolute_yaws + 180) % 360 - 180
         else:
+            # If you want to add extra representations, here goes the code that computes new yaws from actions
             raise NotImplementedError
         # ensure that the new yaw is within the limits
         for yaw, i in zip(np.clip(new_yaws, y_min, y_max), range(self.n_turbines)):
             self.turbines[i].yaw_angle = yaw + wind_direction_change[i]
 
+    # Implementing a method from the base class. This method resets the environment to begin a new experiment
     def reset(self):
         if self.random_reset:
             for turbine in self._turbines:
@@ -445,6 +538,7 @@ class WindFarmEnv(Env):
         self.state = self._get_state()
         return self.state
 
+    # Implementing a method from the base class. This method renders the environment for the user.
     def render(self, mode='human'):
 
         if self.state is None:
@@ -455,12 +549,16 @@ class WindFarmEnv(Env):
 
         return self.visualization.render(return_rgb_array=mode == 'rgb_array')
 
+    # Implementing a method from the base class. This method finalized the environment when it is not used anymore.
     def close(self):
         if self.visualization is not None:
             self.visualization.close()
         self.wind_process.close()
 
-    def get_log_dict(self):
+    def get_log_dict(self) -> Dict[str: Union[float, int, str, bool]]:
+        """
+        Generates a dictionary of data that can be used for logging purposes.
+        """
         yaws = self.yaws_from_wind
         yaw_dict = {f'yaw_{i}': yaws[i] for i in range(len(yaws))}
         return {'yaw': yaw_dict}
