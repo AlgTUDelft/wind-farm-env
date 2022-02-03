@@ -5,8 +5,7 @@ import os
 import yaml
 from gym.wrappers import TimeLimit
 
-from agent import SACAgent, NaiveAgent, FlorisAgent
-from agent.deep import TD3Agent
+from agent import NaiveAgent, FlorisAgent, SACAgent, TD3Agent
 from wind_farm_gym import WindFarmEnv
 from wind_farm_gym.wind_process import MVOUWindProcess
 
@@ -124,12 +123,14 @@ def run(config, seed):
 
         # Initialize an agent
         print(f'Creating agent {name}...')
+        print(f'Retrieving parameters for agent {name}...')
         parameters = agent_description.get('parameters', {})
         # When agent's performance does not change over time, there is no need to re-evaluate it over and over.
         # FLORIS and Naive agents fall into this category, so we run their evaluations only once to speed things
         # up. If you want to, you can rerun them by changing the following variables.
         eval_once = False  # If true, evaluate agent once and copy the results every eval_every steps
         eval_only = False  # If true, don't run training, this agents needs evaluation only
+        print(f'Initializing agent {name}...')
         if agent_description['type'] == 'naive':
             agent = NaiveAgent(name, train_env)
             eval_once = True
@@ -147,6 +148,7 @@ def run(config, seed):
             agent = None
 
         # Run the training and evaluations
+        print(f'Running agent {name}...')
         if agent is not None:
             agent.run(eval_once=eval_once, eval_only=eval_only, **run_config)
             agent.close()

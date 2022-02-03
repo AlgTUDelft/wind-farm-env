@@ -8,7 +8,7 @@ import numpy as np
 from gym import Env
 from gym.spaces import Box
 
-from agent.agent import Agent
+from ..agent import Agent
 from . import ReplayBuffer
 from .actor import Actor
 from .critic import Critic

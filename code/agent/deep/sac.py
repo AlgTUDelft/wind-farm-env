@@ -5,7 +5,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 from gym import Env
 
-from agent.agent import Agent
+from ..agent import Agent
 from . import ReplayBuffer
 from .polyak_update import polyak_update
 from .soft_actor import SoftActor
