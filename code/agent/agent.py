@@ -123,7 +123,8 @@ class Agent(ABC):
     def _eval(self, env: Env, eval_steps):
         observation = env.reset()
         eval_reward = 0.0
-        for t in range(eval_steps):
+        print('\nEvaluating...')
+        for _ in progressbar.progressbar(range(eval_steps)):
             action = self.find_action(observation, in_eval=True)
             observation, reward, _, _ = env.step(action)
             eval_reward += reward
