@@ -12,7 +12,7 @@ import numpy as np
 import os
 
 from .farm_visualization import FarmVisualization
-from .wind_process import WindProcess, NoiseProcess
+from .wind_process import WindProcess, MVGaussianNoiseProcess
 
 # When normalizing the state vector to [0, 1], we need to know the boundaries for the atmospheric conditions.
 # If no such boundaries are supplied, these defaults will be used.
@@ -274,7 +274,7 @@ class WindFarmEnv(Env):
                     perturbed_observations = [i for i in range(len(self.observed_variables))]
                 self._perturbed_observations = list(perturbed_observations)
                 self._perturbation_scale = [(x['max'] - x['min']) * perturbation_scale for x in self.observed_variables]
-                self._noise = NoiseProcess(len(self._perturbed_observations))
+                self._noise = MVGaussianNoiseProcess(len(self._perturbed_observations))
         else:
             self.observation_space = Discrete(1)  # single-state problem
         self.observation_space.seed(self._seed)
@@ -440,7 +440,7 @@ class WindFarmEnv(Env):
             # inject noise
             if self._perturbed_observations is not None:
                 added_noise = np.zeros_like(state)
-                added_noise.put(self._perturbed_observations, self._noise.step(), mode='raise')
+                added_noise.put(self._perturbed_observations, self._noise.step()['value'], mode='raise')
                 added_noise = added_noise * self._perturbation_scale
                 state = state + added_noise
 
@@ -477,8 +477,6 @@ class WindFarmEnv(Env):
             self.floris_interface.calculate_wake()
 
             new_wind_direction = np.array(self._farm.__getattribute__('wind_direction'))
-            wind_direction_change = (new_wind_direction - old_wind_direction + 180) % 360 - 180
-            # print(f"delta: {wind_direction_change}")
         else:
             old_wind_direction = new_wind_direction = np.array(self._farm.__getattribute__('wind_direction'))
 
@@ -527,7 +525,7 @@ class WindFarmEnv(Env):
     # Implementing a method from the base class. This method resets the environment to begin a new experiment
     def reset(self):
         if self.random_reset:
-            for turbine in self._turbines:
+            for turbine in self.turbines:
                 turbine.yaw_angle = self._np_random.uniform(self.desired_min_yaw, self.desired_max_yaw)
         else:
             default_yaw = min(self.desired_max_yaw, max(self.desired_min_yaw, 0.0))
@@ -555,7 +553,7 @@ class WindFarmEnv(Env):
             self.visualization.close()
         self.wind_process.close()
 
-    def get_log_dict(self) -> Dict[str, Union[float, int, str, bool]]:
+    def get_log_dict(self) -> Dict[str, Union[float, int, str, bool, Dict]]:
         """
         Generates a dictionary of data that can be used for logging purposes.
         """

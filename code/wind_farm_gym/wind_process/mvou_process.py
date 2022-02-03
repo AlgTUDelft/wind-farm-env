@@ -1,8 +1,6 @@
 import os
-from csv import DictWriter, DictReader
+from csv import DictWriter
 import math
-import random
-
 from gym.utils import seeding
 from scipy.linalg import expm
 import numpy as np
@@ -18,39 +16,53 @@ from . import WindProcess, CSVProcess
 # Names:     names of the variables in the same order they are used in vectors/matrices
 # Logs:      whether a logarithmic transformation has been taken or not. The transformation is usually required for
 #            non-negative variables, such as wind speed, to convert their co-domain from (0, inf) to (-inf, inf).
-#            in this example, the vector X = [X_1, X_2] represents logarithm of the wind speed M, X_1 = ln(M),
-#            and wind direction phi, X_2 = phi.
-# Mean:      long-term mean values of the variables. Wind speed M is exp(2) (because it is 2 for ln(M)), and
-#            direction is 270 degrees.
+#            in this example, the vector X = [X_1, X_2, X_3] represents logarithm of the turbulence intensity and
+#            wind speed M, X_1 = ln(TI), X_2 = ln(M), and wind direction phi, X_3 = phi.
+# Mean:      long-term mean values of the variables. E.g., wind speed M is exp(2.2769937) (i.e., approximately 9.75),
+#            and direction is 0 degrees from the mean wind direction (270).
 # Drift:     A drift matrix shows how fast the variables revert to the mean values after randomly drifting away.
 #            A zero matrix means no drift, and the variables are changing according to a brownian motion process.
-# Diffusion: Determines the scale of a random noise process. In this case the random noise is a 2-dimensional
-#            Brownian motion [W_1, W_2], where W_1 drives the randomness in the wind speed and W_2 in the direction.
+# Diffusion: Determines the scale of a random noise process. In this case the random noise is a 3-dimensional
+#            Brownian motion [W_1, W_2, W_3], where W_3 drives the randomness in the wind direction.
 #            The diffusion matrix governs the scale and dependencies on these two processes, so the wind direction
-#            (second line of the matrix) depends on W_2 only, but wind speed is influenced by both W_1 and W_2,
+#            (third line of the matrix) depends on W_3 only, but wind speed is influenced by both W_2 and W_3,
 #            i.e., random fluctuations in wind speed depend on random fluctuations in wind direction as well.
-
-
+# Mean Wind Direction: wind direction can be rotated arbitrarily. It is easier to simulate the wind with the mean
+#            direction of 0.0, and then rotate it by a given angle in degrees.
 DEFAULT_PROPERTIES = {
-    'names': ['wind_speed', 'wind_direction'],
-    'logs': [True, False],
-    'mean': [2.219, 0.0],
-    'drift': [[0.032, 0.00],
-              [-3.35, 0.002]],
-    'diffusion': [[0.055, 0.0],
-                  [0.069, 4.037]],
+    'names': ['turbulence_intensity', 'wind_speed', 'wind_direction'],
+    'logs': [True, True, False],
+    'mean': [-2.1552094, 2.2769937, 0.0],
+    'drift': [[0.0024904,      5.4994818e-04, -2.3334057e-06],
+              [-2.1413137e-05, 4.7972649e-05,  5.2700795e-07],
+              [3.0910895e-03, -3.57165e-03,    0.01]],
+    'diffusion': [[0.0125682, -0.0002111, -0.0004371],
+                  [0.0,        0.0021632,  0.0002508],
+                  [0.0,        0.0,        0.1559985]],
     'mean_wind_direction': 270.0
 }
 
 
 class MVOUWindProcess(WindProcess):
+    """
+    MVOUWindProcess is a multi-variate Ornstein--Uhlenbeck process.
+    """
 
     def __init__(self, time_delta=1, properties=None, seed=None):
         """
-        :param episodes: how many episodes to simulate
-        :param time_delta: time interval, in seconds, between two consecutive time steps
-        :param properties: a dictionary describing the underlying MVOU process
-        :param kwargs: extra parameters
+        Initializes a MVOU process.
+
+        :param time_delta: time interval between two consecutive time steps, in seconds
+        :param properties: a dictionary of properties of the process, includes:
+            `names`: a list of atmospheric conditions, e.g., ['wind_speed', 'wind_direction'];
+            `logs`: a list of boolean values of the same length, showing whether logarithmic transformation is needed
+                for a particular atmospheric measurement;
+            `mean`: a list of mean values to which (log)variables tend to revert to; for wind_direction usually 0.0
+            `drift`: the drift matrix
+            `diffusion`: the diffusion matrix
+            `mean_wind_direction`: wind direction is additionally rotated by this angle after the simulation; this makes
+                it possible to turn the wind without needing to re-estimate the drift and diffusion
+        :param seed: random seed
         """
         super().__init__()
         self._seed = seed
@@ -70,8 +82,9 @@ class MVOUWindProcess(WindProcess):
         if self._mu is None:
             self._mu = np.zeros(self._n)
         else:
-            assert len(self._mu.shape) == 1 and self._mu.size == self._n, f'Mean must be a vector of length {n}'
+            assert len(self._mu.shape) == 1 and self._mu.size == self._n, f'Mean must be a vector of length {self._n}'
         self._mean_wind_direction = properties.get('mean_wind_direction', 270.0)
+        self._np_random, self._x = None, None
         self.reset()
 
         # Based on
@@ -115,6 +128,16 @@ class MVOUWindProcess(WindProcess):
 
     @staticmethod
     def switch_to_csv(data_file, time_steps, time_delta, properties, seed):
+        """
+        Saves the MVOU process into a `.csv` file, and returns a CSVProcess that reads data from that file.
+        Do this when the same process needs to be used multiple times to ensure that the same data is used.
+        :param data_file: file to save the generated data into
+        :param time_steps: number of time steps to save
+        :param time_delta: time increment between two consecutive time steps, in seconds
+        :param properties: a property dictionary for the MVOU process
+        :param seed: random seed
+        :return: a `CSVProcess` that reads data from the file
+        """
         if not os.path.exists(data_file):
             wind_process = MVOUWindProcess(time_delta=time_delta, properties=properties, seed=seed)
             wind_process.save(data_file, time_steps)

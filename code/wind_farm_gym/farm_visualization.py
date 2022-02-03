@@ -2,14 +2,34 @@ import floris.tools as ft
 import numpy as np
 from gym.envs.classic_control import rendering
 from .wind_map import WindMap
+from typing import Union, Tuple
 
 
 class FarmVisualization:
+    """
+    FarmVisualization handles rendering of a wind farm.
+    """
 
     def __init__(self, fi: ft.floris_interface.FlorisInterface,
-                 resolution=64, viewer_width=640, dpi=80,
+                 resolution: Union[int, Tuple[int, int]] = 64, viewer_width=640, dpi=80,
                  x_bounds=None, y_bounds=None,
                  margins=None, units='diam', color_map=None):
+        """
+        Initializes a wind farm visualization
+
+        :param fi: FlorisInterface to render
+        :param resolution: rendering is done in blocks, this is the number of blocks along each axis; if a single value
+        is given, it will be used for the larger  dimension of the  wind farm, and the other axis will have a resolution
+        to keep the blocks as close to  squares as possible
+        :param viewer_width: view port width in pixels
+        :param dpi: DPI for rendering
+        :param x_bounds: coordinate bounds along the x axis; if None, will be derived automatically
+        :param y_bounds: coordinate bounds along the y axis; if None, will be derived automatically
+        :param margins: margins to add to automatically derived bounds; defaults to two turbine diameters on each side
+            except east,  where it is ten diameters; this is done so that the wakes can still be seen in the east
+        :param units: units of measurement for the margins; 'diam' means turbine diameters and 'm' --- meters
+        :param color_map: matplotlib color map for rendering
+        """
         self._floris_interface = fi
         farm = self._floris_interface.floris.farm
         turbine_coordinates = farm.flow_field.turbine_map.coords

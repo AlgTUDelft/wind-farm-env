@@ -11,6 +11,10 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 
 
 class WindMap(Sprite):
+    """
+    WindMap is a visualization of an overhead view of the windfarm. It renders the wind farm using matplotlib
+    and creates a pyglet Sprite to render from it.
+    """
 
     def __init__(self, size, dpi, cut_plane, turbines_raw_data, wind_speed_limits=None, color_map='GnBu_r'):
         self.fig = plt.figure(figsize=size, dpi=dpi)
