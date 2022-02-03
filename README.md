@@ -18,8 +18,7 @@ Make sure that you are using Python 3.8 or newer. You also need to install requi
 
 To replicate the experiments in the paper, run `python3 code/main.py --config CONFIG_FILE`, where `CONFIG_FILE` is a
 path to a configuration file. The output data is written in Tensorboard
-format to `code/<directory>/<name>/...`, where `<directory>` and `<name>` correspond to parameters specified in the
-configuration file. You can use `./code/tensorboard_to_csv.py --path PATH` to convert the output from `PATH` to a
+format to `<current-path>/<directory>/<name>/...`, where `<current-path>` is the path the script was executed from and `<directory>` and `<name>` correspond to parameters specified in the configuration file. You can use `./code/tensorboard_to_csv.py --path <PATH>` to convert the output from `<PATH>` to a
 `.csv`-file.
 
 ### Building from the Source Code
