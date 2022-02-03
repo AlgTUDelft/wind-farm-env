@@ -2,7 +2,7 @@
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 This repository contains the source code and data for the experiments presented in
-_Deep Reinforcement Learning for Active Wake Control_.
+_Deep Reinforcement Learning for Active Wake Control_ (to be published at AAMAS'22).
 
 ## How to Use This Repository
 
@@ -18,7 +18,9 @@ Make sure that you are using Python 3.8 or newer. You also need to install requi
 
 To replicate the experiments in the paper, run `python3 code/main.py --config CONFIG_FILE`, where `CONFIG_FILE` is a
 path to a configuration file. The output data is written in Tensorboard
-format to `code/<directory>/<name>/...`, where `<directory>` and `<name>` correspond to parameters specified in the configuration file. You can use `./code/tensorboard_to_csv.py --path PATH` to convert the output from `PATH` to a `.csv`-file.
+format to `code/<directory>/<name>/...`, where `<directory>` and `<name>` correspond to parameters specified in the
+configuration file. You can use `./code/tensorboard_to_csv.py --path PATH` to convert the output from `PATH` to a
+`.csv`-file.
 
 ### Building from the Source Code
 
@@ -36,7 +38,10 @@ Finally, install the package by running `python3 -m pip install wind_farm_gym-<V
 `python3 -m pip install wind_farm_gym-<VERSION>-py3-none-any.whl --force-reinstall` if you want to reinstall an existing
 installation. This should install the package and its dependencies.
 
-To test that the package is available and working, you can run [build-test.py](https://github.com/AlgTUDelft/wind-farm-env/blob/main/build-test.py). A simulation window should appear on your screen.  
+To test that the package is available and working, you can run the  following example, also  available at
+[build-test.py](https://github.com/AlgTUDelft/wind-farm-env/blob/main/build-test.py). A simulation window should
+appear on your screen showing an overhead view of a three-turbine wind farm.
+
 ```python
 from wind_farm_gym import WindFarmEnv
 
@@ -51,6 +56,8 @@ for _ in range(1000):                # Repeat for 1000 steps
 env.close()
 ```
 
+![A simulation of an overhead view of a wind farm](build-test.png)
+
 ## Contents
 
 - `./code` contains the source code:
@@ -64,6 +71,7 @@ Section 3.4.
         - `action_representations_tunnel` for the experiment presented in Section 4.1.
         - `noisy_1` ... `noisy_7` for the experiment presented in Section 4.2; each folder corresponds to a different
 level of noise, 1% ... 7%.
+- `supplement.pdf` is the supplementary material submitted with the paper.
 
 ## Citation
 
