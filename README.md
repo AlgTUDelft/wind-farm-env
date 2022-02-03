@@ -17,8 +17,8 @@ Make sure that you are using Python 3.8 or newer. You also need to install requi
 `python3 -m pip install -r requirements.txt` from the project's folder.
 
 To replicate the experiments in the paper, run `python3 code/main.py --config CONFIG_FILE`, where `CONFIG_FILE` is a
-path to a configuration file. The output data is written to a directory specified in the configuration, in Tensorboard
-format. You can use `./code/tensorboard_to_csv.py --path PATH` to convert the output from `PATH` to a `.csv`-file.
+path to a configuration file. The output data is written in Tensorboard
+format to `code/<directory>/<name>/...`, where `<directory>` and `<name>` correspond to parameters specified in the configuration file. You can use `./code/tensorboard_to_csv.py --path PATH` to convert the output from `PATH` to a `.csv`-file.
 
 ### Building from the Source Code
 
@@ -27,14 +27,16 @@ install a Python package that will make the environment available on your machin
 
 First, make sure that you have `build` installed by running `python3 -m pip install --upgrade build`.
 
-Next, build the package by running `python3 -m build` from the project's directory. This will create `./dist` with 
-a `wind_farm_gym-VERSION-py3-none-any.whl` file in it, where `VERSION` is the current release version.
+Next, build the package by running `python3 -m build` from the project's directory. For linux based systems you can be asked to install `python3-venv` (i.e. `apt install python3-venv`).
 
-Finally, install the package by running `python3 -m pip install wind_farm_gym-VERSION-py3-none-any.whl`, or
-`python3 -m pip install wind_farm_gym-VERSION-py3-none-any.whl --force-reinstall` if you want to reinstall an existing
+This will create `./dist` with 
+a `wind_farm_gym-<VERSION>-py3-none-any.whl` file in it, where `<VERSION>` is the current release version.
+
+Finally, install the package by running `python3 -m pip install wind_farm_gym-<VERSION>-py3-none-any.whl`, or
+`python3 -m pip install wind_farm_gym-<VERSION>-py3-none-any.whl --force-reinstall` if you want to reinstall an existing
 installation. This should install the package and its dependencies.
 
-To test that the package is available and working, you can run the following script:
+To test that the package is available and working, you can run [build-test.py](https://github.com/AlgTUDelft/wind-farm-env/blob/main/build-test.py). A simulation window should appear on your screen.  
 ```python
 from wind_farm_gym import WindFarmEnv
 
