@@ -16,10 +16,11 @@ the action representation experiment (Section 4.1), and `noisy_*.yml` for the no
 Make sure that you are using Python 3.8 or newer. You also need to install required packages by running
 `python3 -m pip install -r requirements.txt` from the project's folder.
 
-To replicate the experiments in the paper, run `python3 code/main.py --config CONFIG_FILE`, where `CONFIG_FILE` is a
-path to a configuration file. The output data is written in Tensorboard
-format to `<current-path>/<directory>/<name>/...`, where `<current-path>` is the path the script was executed from and `<directory>` and `<name>` correspond to parameters specified in the configuration file. You can use `./code/tensorboard_to_csv.py --path <PATH>` to convert the output from `<PATH>` to a
-`.csv`-file.
+To replicate the experiments in the paper, run `python3 main.py --config CONFIG_FILE` from the `code` directory,
+where `CONFIG_FILE` is a path to a configuration file. The output data is written in Tensorboard
+format to `<current-path>/<directory>/<name>/...`, where `<current-path>` is the path the script was executed from and
+`<directory>` and `<name>` correspond to parameters specified in the configuration file. You can use
+`./code/tensorboard_to_csv.py --path <PATH>` to convert the output from `<PATH>` to a `.csv`-file.
 
 ### Building from the Source Code
 
