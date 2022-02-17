@@ -10,7 +10,7 @@ class CoordinatingAgent(Agent):
         super().__init__(name, "Multi-Agent", env)
 
         # compute for each turbine what other turbines are within distance and store in matrix
-        self.turbines_in_range_matrix = turbines_within_distance(
+        self.turbines_in_range_list = is_within_distance_mapping(
             distance_matrix(turbine_coordinates),
             distance_threshold
         )
@@ -23,13 +23,15 @@ class CoordinatingAgent(Agent):
             # Action size = 1, as a single agent coordinates a single turbine
             return agent_constructor(state_size=state_size, action_size=1)
 
-        self.child_agents = list(map(create_agent, self.turbines_in_range_matrix))
+        self.child_agents = list(map(create_agent, self.turbines_in_range_list))
 
     def find_action(self, observation, in_eval=False):
+        # split up the observation such that the correct state space is sent to each agent
         # todo
         pass
 
     def learn(self, observation, action, reward, next_observation, global_step):
+        # split up the observation such that the correct state space is sent to each agent
         # todo
         pass
 
@@ -42,7 +44,7 @@ def distance_matrix(turbine_coordinates):
     return scipy.spatial.distance.cdist(turbine_coordinates, turbine_coordinates)
 
 
-def turbines_within_distance(distance_matrix, threshold):
+def is_within_distance_mapping(distance_matrix, threshold):
     return list(map(lambda row: [i for i, x in enumerate(row) if x < threshold], distance_matrix))
 
 
@@ -51,4 +53,4 @@ if __name__ == "__main__":
     turbine_y = [5, 0, 2, 8]
     turbine_coordinates = list(zip(turbine_x, turbine_y))
     dist = distance_matrix(turbine_coordinates)
-    within_distance = turbines_within_distance(dist, 4)
+    within_distance = is_within_distance_mapping(dist, 4)
