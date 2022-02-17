@@ -5,7 +5,7 @@ import os
 import yaml
 from gym.wrappers import TimeLimit
 
-from agent import NaiveAgent, FlorisAgent, SACAgent, TD3Agent
+from agent import NaiveAgent, FlorisAgent, SACAgent, TD3Agent, MultiAgentNaive
 from wind_farm_gym import WindFarmEnv
 from wind_farm_gym.wind_process import MVOUWindProcess
 
@@ -143,6 +143,14 @@ def run(config, seed):
             agent = SACAgent(name, train_env, **parameters)
         elif agent_description['type'] == 'td3':
             agent = TD3Agent(name, train_env, **parameters)
+        elif agent_description['type'] == 'MultiAgentNaive':
+            eval_only = True
+            agent = MultiAgentNaive(
+                name,
+                train_env,
+                turbine_layout=env_config['turbine_layout'],
+                **parameters
+            )
         else:
             # Implement your custom agents here
             agent = None

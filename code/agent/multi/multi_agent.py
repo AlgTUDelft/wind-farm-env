@@ -1,3 +1,5 @@
+from abc import ABC, abstractmethod
+
 import scipy.spatial.distance
 from gym import Env
 from ..agent import Agent
@@ -5,42 +7,52 @@ import scipy
 import numpy as np
 
 
-class CoordinatingAgent(Agent):
-    def __init__(self, name, env: Env, turbine_coordinates, distance_threshold, agent_constructor, state_space_size_per_agent):
-        super().__init__(name, "Multi-Agent", env)
+class MultiAgent(Agent, ABC):
+    def __init__(self, name, type, env: Env, turbine_layout, distance_threshold, agent_constructor, **kwargs):
+        super().__init__(name, type, env)
 
         # compute for each turbine what other turbines are within distance and store in matrix
         self.turbines_in_range_list = is_within_distance_mapping(
-            distance_matrix(turbine_coordinates),
+            distance_matrix(turbine_layout),
             distance_threshold
         )
 
         # create an agent for each turbine
         def create_agent(row):
+            state_space_size_per_agent = 1
             number_of_agents_within_distance = len(row)
             state_size = number_of_agents_within_distance * state_space_size_per_agent
             # state size depends on the amount of other agents.
             # Action size = 1, as a single agent coordinates a single turbine
-            return agent_constructor(state_size=state_size, action_size=1)
+            return agent_constructor(state_shape=(state_size, 1), action_shape=(1, 1), **kwargs)
 
         self.child_agents = list(map(create_agent, self.turbines_in_range_list))
 
     def find_action(self, observation, in_eval=False):
-        # split up the observation such that the correct state space is sent to each agent
-        # todo
-        pass
+        # todo: split observation and call find_action() child agents
+        return
 
     def learn(self, observation, action, reward, next_observation, global_step):
-        # split up the observation such that the correct state space is sent to each agent
-        # todo
+        # todo: split observation and call learn() on child agents
+        return
+
+
+class AgentChild(ABC):
+    def __init__(self, state_shape, action_shape):
+        self.state_shape = state_shape
+        self.action_shape = action_shape
+
+    @abstractmethod
+    def find_action(self, observation, in_eval=False):
         pass
 
-    def get_log_dict(self):
-        # todo
+    @abstractmethod
+    def learn(self, observation, action, reward, next_observation, global_step):
         pass
 
 
-def distance_matrix(turbine_coordinates):
+def distance_matrix(turbine_layout):
+    turbine_coordinates = list(zip(turbine_layout["x"], turbine_layout["y"]))
     return scipy.spatial.distance.cdist(turbine_coordinates, turbine_coordinates)
 
 
