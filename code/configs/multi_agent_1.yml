@@ -71,4 +71,4 @@ agents:
   - name: MultiAgentNaive
     type: MultiAgentNaive
     parameters:
-      distance_threshold: 100
+      distance_threshold: 1000

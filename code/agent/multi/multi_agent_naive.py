@@ -19,8 +19,8 @@ class MultiAgentNaive(MultiAgent):
 class AgentNaiveChild(AgentChild):
     def find_action(self, observation, in_eval=False):
         # empty action
-        return list(np.zeros(self.action_shape))
+        return 0
 
     def learn(self, observation, action, reward, next_observation, global_step):
         # no learning
-        pass
+        return

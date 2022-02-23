@@ -144,7 +144,7 @@ def run(config, seed):
         elif agent_description['type'] == 'td3':
             agent = TD3Agent(name, train_env, **parameters)
         elif agent_description['type'] == 'MultiAgentNaive':
-            eval_only = True
+            # eval_only = True
             agent = MultiAgentNaive(
                 name,
                 train_env,
