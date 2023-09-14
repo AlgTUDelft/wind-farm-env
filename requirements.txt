@@ -1,9 +1,9 @@
 FLORIS==2.4
-gym>=0.20.0
-matplotlib>=3.4.3
+gymnasium>=0.29.1
+matplotlib>=3.7.3
 numpy>=1.21.2
 pandas>=1.3.3
 progressbar2>=3.53.3
-pyglet>=1.5.21
+pyglet==1.5.21
 PyYAML>=5.4.1
 scipy>=1.7.1
