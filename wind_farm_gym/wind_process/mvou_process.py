@@ -1,7 +1,7 @@
 import os
 from csv import DictWriter
 import math
-from gym.utils import seeding
+from gymnasium.utils import seeding
 from scipy.linalg import expm
 import numpy as np
 from numpy.linalg import pinv

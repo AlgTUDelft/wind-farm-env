@@ -1,6 +1,6 @@
 import floris.tools as ft
 import numpy as np
-from gym.envs.classic_control import rendering
+from . import rendering
 from .wind_map import WindMap
 from typing import Union, Tuple
 

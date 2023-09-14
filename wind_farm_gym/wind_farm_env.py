@@ -4,9 +4,9 @@ import floris.simulation
 from floris.tools.floris_interface import FlorisInterface
 from floris.simulation import Farm
 
-from gym import Env
-from gym.utils import seeding
-from gym.spaces import Box, Discrete
+from gymnasium import Env
+from gymnasium.utils import seeding
+from gymnasium.spaces import Box, Discrete
 
 import numpy as np
 import os
