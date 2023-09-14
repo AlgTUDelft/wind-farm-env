@@ -1,4 +1,4 @@
-FLORIS>=2.4
+FLORIS==2.4
 gym>=0.20.0
 matplotlib>=3.4.3
 numpy>=1.21.2
@@ -7,5 +7,3 @@ progressbar2>=3.53.3
 pyglet>=1.5.21
 PyYAML>=5.4.1
 scipy>=1.7.1
-tensorboard>=2.6.0
-torch>=1.9.1
