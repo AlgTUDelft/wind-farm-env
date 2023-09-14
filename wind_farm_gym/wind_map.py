@@ -22,8 +22,8 @@ class WindMap(Sprite):
         self.fig.subplots_adjust(top=1, bottom=0, right=1, left=0, hspace=0, wspace=0)
         self.ax = self.fig.gca()
         self.ax.set_axis_off()
-        self.ax.xaxis.set_major_locator(plt.NullLocator())
-        self.ax.yaxis.set_major_locator(plt.NullLocator())
+        self.ax.xaxis.set_visible(False)
+        self.ax.yaxis.set_visible(False)
         self.canvas = FigureCanvasAgg(self.fig)
         self.color_map = color_map
         if wind_speed_limits is None:
@@ -67,7 +67,7 @@ class WindMap(Sprite):
         self.draw()
 
     def clear(self):
-        self.ax.collections.clear()
+        self.ax.clear()
 
     def close(self):
         plt.close(self.fig)
